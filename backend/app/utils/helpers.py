@@ -2,7 +2,9 @@
 General utility helpers for the platform.
 """
 import uuid
-import os
+import logging
+
+logger = logging.getLogger(__name__)
 import re
 from datetime import datetime
 from pathlib import Path
@@ -55,23 +57,63 @@ def truncate_text(text: str, max_chars: int = 10000) -> str:
     if last_period > max_chars * 0.8:
         return truncated[: last_period + 1]
     return truncated + " [... truncated]"
-def parse_json_response(text: str) -> dict | list:
+from typing import Any
+import json
+
+def parse_json_response(text: str) -> Any:
     """
-    Safely parse a JSON response from the LLM.
-    Handles markdown code blocks wrapping the JSON.
+    Parse JSON returned by the LLM.
+
+    Supports:
+
+    - Plain JSON
+    - ```json fenced blocks
+    - JSON embedded inside explanations
     """
-    import json
-    # Strip markdown fences
-    cleaned = re.sub(r"```(?:json)?\s*", "", text).strip()
-    cleaned = cleaned.rstrip("`").strip()
+
+    cleaned = re.sub(
+        r"```(?:json)?|```",
+        "",
+        text,
+        flags=re.IGNORECASE
+    ).strip()
+
     try:
         return json.loads(cleaned)
-    except json.JSONDecodeError as e:
-        # Try to find JSON object within the text
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        raise ValueError(f"Could not parse LLM response as JSON: {e}\nResponse: {text[:200]}")
+
+    except json.JSONDecodeError:
+
+        object_match = re.search(
+            r"\{.*\}",
+            cleaned,
+            re.DOTALL
+        )
+
+        if object_match:
+
+            return json.loads(
+                object_match.group()
+            )
+
+        array_match = re.search(
+            r"\[.*\]",
+            cleaned,
+            re.DOTALL
+        )
+
+        if array_match:
+
+            return json.loads(
+                array_match.group()
+            )
+
+        logger.exception(
+            "Failed to parse Gemini JSON."
+        )
+
+        raise ValueError(
+            "Gemini returned invalid JSON."
+        )
 def utcnow_iso() -> str:
     """Return current UTC time as ISO 8601 string."""
     return datetime.utcnow().isoformat() + "Z"

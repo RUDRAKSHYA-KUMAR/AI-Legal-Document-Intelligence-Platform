@@ -118,6 +118,10 @@ async def upload_document(
 
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+            print("=" * 50)
+            print("Saving PDF to:")
+            print(os.path.abspath(file_path))
+            print("=" * 50)
 
         # ==================================================
         # Validate File Size

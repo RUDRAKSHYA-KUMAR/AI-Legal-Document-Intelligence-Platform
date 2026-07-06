@@ -1,67 +1,132 @@
 """
 app/core/prompts.py
 
-Centralized prompt templates for the AI Legal Documentation Platform.
+Centralized Prompt Library
+AI Legal Documentation Platform
 
-Every API should import prompts from here instead of hardcoding them.
+Every AI endpoint should import prompts from this file.
+Never hardcode prompts anywhere else.
 """
 
 from langchain_core.prompts import PromptTemplate
 
 
 # ============================================================
-# Base System Prompt
+# SYSTEM PROMPT
 # ============================================================
 
 LEGAL_SYSTEM_PROMPT = """
-You are SATURDAY, an AI-powered Legal Documentation Assistant.
+You are SATURDAY.
 
-Your responsibilities:
+SATURDAY is an AI-powered Legal Documentation Assistant.
+
+Your Responsibilities:
+
 - Analyze legal documents accurately.
-- Never hallucinate facts.
-- Only answer using the provided document/context.
-- If information is unavailable, clearly state that.
+- Never hallucinate.
+- Never invent clauses.
+- Never invent dates.
+- Never assume missing information.
+- Use ONLY the provided document.
 - Explain legal language in simple English.
-- Maintain a professional and neutral tone.
-- Do not provide false legal advice.
-- Recommend consulting a qualified lawyer whenever legal interpretation is uncertain.
+- Stay professional and neutral.
+- If information is unavailable,
+  clearly mention it.
 
-Always return structured and clean responses.
+VERY IMPORTANT:
+
+Return ONLY valid JSON.
+
+DO NOT:
+
+- Return markdown
+- Return ```json
+- Explain outside JSON
+- Add comments
+- Add notes
+
+Your response MUST be directly parsable using Python json.loads().
 """
 
 
 # ============================================================
-# Contract Analysis
+# JSON RULE
+# ============================================================
+
+JSON_RULE = """
+
+Return ONLY valid JSON.
+
+Do not wrap inside markdown.
+
+Do not write explanations.
+
+Do not use ```json.
+
+Output only JSON.
+
+"""
+
+
+# ============================================================
+# HELPER
+# ============================================================
+
+def build_prompt(template: PromptTemplate, **kwargs):
+
+    """
+    Automatically inject the system prompt.
+
+    Usage:
+
+    prompt = build_prompt(
+        SUMMARY_PROMPT,
+        document=text
+    )
+    """
+
+    return template.format(
+        system_prompt=LEGAL_SYSTEM_PROMPT,
+        json_rule=JSON_RULE,
+        **kwargs
+    )
+
+
+# ============================================================
+# CONTRACT ANALYSIS
 # ============================================================
 
 CONTRACT_ANALYSIS_PROMPT = PromptTemplate.from_template(
 """
 {system_prompt}
 
-Analyze the following legal contract.
+Analyze the following legal document.
 
 Document:
+
 {document}
 
-Return:
+{json_rule}
 
-1. Contract Type
-2. Parties Involved
-3. Effective Date
-4. Expiration Date
-5. Governing Law
-6. Main Purpose
-7. Important Obligations
-8. Key Deadlines
-9. Important Legal Risks
+Return JSON in this exact schema.
 
-Keep the response structured.
+{{
+    "contract_type":"",
+    "parties":[],
+    "effective_date":"",
+    "expiration_date":"",
+    "governing_law":"",
+    "main_purpose":"",
+    "important_obligations":[],
+    "key_deadlines":[],
+    "legal_risks":[]
+}}
 """
 )
 
 
 # ============================================================
-# Document Summary
+# SUMMARY
 # ============================================================
 
 SUMMARY_PROMPT = PromptTemplate.from_template(
@@ -71,135 +136,192 @@ SUMMARY_PROMPT = PromptTemplate.from_template(
 Summarize the following legal document.
 
 Document:
+
 {document}
 
-Requirements:
+Maximum 200 words.
 
-- Maximum 200 words
-- Use simple language
-- Mention only important information
-- Preserve important legal meaning
+{json_rule}
 
-Summary:
+Return
+
+{{
+    "summary":"",
+    "key_points":[
+        "",
+        "",
+        ""
+    ]
+}}
 """
 )
 
 
 # ============================================================
-# Clause Extraction
+# CLAUSE EXTRACTION
 # ============================================================
 
 CLAUSE_EXTRACTION_PROMPT = PromptTemplate.from_template(
 """
 {system_prompt}
 
-Extract every important clause from the following document.
+Extract every important legal clause.
 
 Document:
+
 {document}
 
-For every clause provide:
+{json_rule}
 
-- Clause Name
-- Description
-- Importance
-- Risk Level (Low / Medium / High)
+Return
 
-Return the result in a structured format.
+{{
+    "clauses":[
+        {{
+            "title":"",
+            "description":"",
+            "importance":"",
+            "risk_level":""
+        }}
+    ]
+}}
 """
 )
 
 
 # ============================================================
-# Risk Analysis
+# CLAUSE EXPLANATION
+# ============================================================
+
+CLAUSE_EXPLANATION_PROMPT = PromptTemplate.from_template(
+"""
+{system_prompt}
+
+Explain the following legal clause.
+
+Clause:
+
+{clause}
+
+Context:
+
+{document}
+
+{json_rule}
+
+Return
+
+{{
+    "title":"",
+    "meaning":"",
+    "legal_importance":"",
+    "risk_level":"",
+    "simple_explanation":""
+}}
+"""
+)
+
+
+# ============================================================
+# RISK ANALYSIS
 # ============================================================
 
 RISK_ANALYSIS_PROMPT = PromptTemplate.from_template(
 """
 {system_prompt}
 
-Analyze the legal document below.
+Analyze the legal risks.
 
 Document:
+
 {document}
 
-Identify every legal risk.
+{json_rule}
 
-For each risk provide:
+Return
 
-- Risk Title
-- Severity (Low / Medium / High)
-- Explanation
-- Suggested Improvement
+{{
+    "overall_risk_score":0,
 
-Finally provide:
-
-Overall Risk Score (0-100)
-
-Do not invent risks that are not present.
+    "risks":[
+        {{
+            "title":"",
+            "severity":"",
+            "reason":"",
+            "recommendation":""
+        }}
+    ]
+}}
 """
 )
 
 
 # ============================================================
-# Chat With Document (RAG)
+# CHAT (RAG)
 # ============================================================
 
 CHAT_PROMPT = PromptTemplate.from_template(
 """
 {system_prompt}
 
-Use ONLY the provided context to answer the user's question.
+Answer ONLY from the provided context.
 
 Context:
+
 {context}
 
 Question:
+
 {question}
 
-Rules:
+If the answer is unavailable,
 
-- Never use outside knowledge.
-- If the answer is not found in the context,
-  respond:
+say so.
 
-"I couldn't find that information in the uploaded document."
+{json_rule}
 
-Keep the answer concise and accurate.
+Return
+
+{{
+    "answer":""
+}}
 """
 )
 
 
 # ============================================================
-# Dashboard Insights
+# DASHBOARD
 # ============================================================
 
 DASHBOARD_PROMPT = PromptTemplate.from_template(
 """
 {system_prompt}
 
-Based on the following legal document,
-
-Document:
-{document}
-
 Generate dashboard insights.
 
-Return:
+Document:
 
-- Contract Type
-- Total Clauses
-- High Risk Clauses
-- Medium Risk Clauses
-- Low Risk Clauses
-- Overall Risk Score
-- Short Recommendation
+{document}
+
+{json_rule}
+
+Return
+
+{{
+    "contract_type":"",
+    "total_clauses":0,
+    "high_risk":0,
+    "medium_risk":0,
+    "low_risk":0,
+    "overall_risk_score":0,
+    "recommendation":""
+}}
 """
 )
 
 
 # ============================================================
-# Voice Assistant
+# VOICE
 # ============================================================
 
 VOICE_PROMPT = PromptTemplate.from_template(
@@ -208,19 +330,16 @@ VOICE_PROMPT = PromptTemplate.from_template(
 
 You are speaking directly to the user.
 
-Answer naturally as if you are having a conversation.
+Context:
 
-Keep the response:
-
-- Friendly
-- Professional
-- Easy to understand
-- Under 120 words
+{context}
 
 Question:
+
 {question}
 
-Context:
-{context}
+Speak naturally.
+
+Maximum 120 words.
 """
 )
