@@ -1,6 +1,6 @@
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-from core.config import GEMINI_API_KEY, EMBEDDING_MODEL
+from .config import GEMINI_API_KEY, EMBEDDING_MODEL
 
 
 class EmbeddingService:
