@@ -1,5 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from app.utils.helpers import parse_json_response
+from app.database.db import get_db
+from app.database.models import Document
+from app.rag.chain import LegalRAGChain
+
 
 router = APIRouter(
     prefix="/chat",
@@ -7,18 +13,18 @@ router = APIRouter(
 )
 
 
-# ==========================
+# ======================================================
 # Request Model
-# ==========================
+# ======================================================
 
 class ChatRequest(BaseModel):
     document_id: int
     question: str
 
 
-# ==========================
-# Response Model (Optional)
-# ==========================
+# ======================================================
+# Response Model
+# ======================================================
 
 class ChatResponse(BaseModel):
     success: bool
@@ -26,42 +32,68 @@ class ChatResponse(BaseModel):
     data: dict
 
 
-# ==========================
+# ======================================================
 # Chat Endpoint
-# ==========================
+# ======================================================
 
 @router.post(
     "/",
     response_model=ChatResponse
 )
-async def chat_with_document(request: ChatRequest):
+async def chat_with_document(
+    request: ChatRequest,
+    db: Session = Depends(get_db)
+):
     """
     Chat with an uploaded legal document.
-
-    Parameters:
-        document_id : int
-        question : str
-
-    Returns:
-        AI generated answer.
     """
 
     try:
 
-        # -----------------------------------------
-        # TODO:
-        # Replace this with RAG Team function
-        #
-        # answer = chat_with_document(
-        #     request.document_id,
-        #     request.question
-        # )
-        # -----------------------------------------
+        # -------------------------------------------------
+        # Validate Question
+        # -------------------------------------------------
 
-        dummy_answer = (
-            f"You asked: '{request.question}'. "
-            "RAG pipeline is not connected yet."
+        if not request.question.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Question cannot be empty."
+            )
+
+        # -------------------------------------------------
+        # Check Document Exists
+        # -------------------------------------------------
+
+        document = db.query(Document).filter(
+            Document.id == request.document_id
+        ).first()
+
+        if not document:
+            raise HTTPException(
+                status_code=404,
+                detail="Document not found."
+            )
+
+        # -------------------------------------------------
+        # Create RAG Chain
+        # -------------------------------------------------
+
+        rag = LegalRAGChain(
+            document_id=request.document_id
         )
+
+        # -------------------------------------------------
+        # Generate Answer
+        # -------------------------------------------------
+
+        answer = rag.ask(
+            request.question
+        )
+        result = parse_json_response(answer)
+
+        # -------------------------------------------------
+        # Response
+        # -------------------------------------------------
 
         return ChatResponse(
             success=True,
@@ -69,11 +101,15 @@ async def chat_with_document(request: ChatRequest):
             data={
                 "document_id": request.document_id,
                 "question": request.question,
-                "answer": dummy_answer
+                "answer": result["answer"]
             }
         )
 
+    except HTTPException:
+        raise
+
     except Exception as e:
+
         raise HTTPException(
             status_code=500,
             detail=str(e)

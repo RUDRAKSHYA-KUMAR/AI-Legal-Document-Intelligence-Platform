@@ -9,7 +9,11 @@ from langchain_core.runnables import RunnablePassthrough
 
 from app.rag.retrieval import DocumentRetriever
 from app.core.gemini import llm
-from app.core.prompts import CHAT_PROMPT, LEGAL_SYSTEM_PROMPT
+from app.core.prompts import (
+    CHAT_PROMPT,
+    LEGAL_SYSTEM_PROMPT,
+    JSON_RULE,
+)
 
 
 class LegalRAGChain:
@@ -20,7 +24,10 @@ class LegalRAGChain:
     ):
         self.document_id = document_id
         self.llm = llm
-        self.prompt = CHAT_PROMPT.partial(system_prompt=LEGAL_SYSTEM_PROMPT)
+        self.prompt = CHAT_PROMPT.partial(
+            system_prompt=LEGAL_SYSTEM_PROMPT,
+            json_rule=JSON_RULE,
+        )
         self.parser = StrOutputParser()
 
     @staticmethod
