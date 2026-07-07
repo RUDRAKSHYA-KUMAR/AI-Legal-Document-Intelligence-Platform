@@ -7,17 +7,18 @@ pipeline for answering legal document queries.
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-from rag.retrival import document_retriever
+from app.rag.retrieval import DocumentRetriever
 from app.core.gemini import llm
 from app.core.prompts import CHAT_PROMPT, LEGAL_SYSTEM_PROMPT
 
 
 class LegalRAGChain:
-    """
-    Complete Legal RAG Pipeline
-    """
 
-    def __init__(self):
+    def __init__(
+        self,
+        document_id: int,
+    ):
+        self.document_id = document_id
         self.llm = llm
         self.prompt = CHAT_PROMPT.partial(system_prompt=LEGAL_SYSTEM_PROMPT)
         self.parser = StrOutputParser()
@@ -37,20 +38,23 @@ class LegalRAGChain:
         """
         Build LangChain RAG pipeline.
         """
-
+        retriever = DocumentRetriever(
+            document_id=self.document_id
+        )
+        
         chain = (
             {
                 "context":
-                    document_retriever.retriever
+                    retriever.retriever
                     | self.format_docs,
-
+        
                 "question": RunnablePassthrough(),
             }
             | self.prompt
             | self.llm
             | self.parser
         )
-
+        
         return chain
 
     def ask(
@@ -76,4 +80,3 @@ class LegalRAGChain:
 
 # Singleton Instance
 
-legal_rag = LegalRAGChain()

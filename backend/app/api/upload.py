@@ -1,7 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
+from app.rag.loader import document_loader
+from app.rag.splitter import document_splitter
+from app.rag.vectorstore import vector_manager
 from app.database.db import get_db
 from app.database.models import Document
 
@@ -152,20 +154,64 @@ async def upload_document(
         db.add(document)
         db.commit()
         db.refresh(document)
+        try:
+        
+            documents = document_loader.load_document(
+                document.filepath
+            )
+        
+            chunks = document_splitter.split_documents(
+                documents
+            )
+        
+            for index, chunk in enumerate(chunks):
+        
+                chunk.metadata["document_id"] = document.id
+                chunk.metadata["filename"] = document.filename
+                chunk.metadata["chunk_id"] = index
+        
+            vector_manager.create_vectorstore(
+                documents=chunks,
+                document_id=document.id
+            )
+        
+        except Exception:
+        
+            db.delete(document)
+        
+            db.commit()
+        
+            if os.path.exists(document.filepath):
+                os.remove(document.filepath)
+        
+            raise        
 
         # ==================================================
-        # Future
+        # Index Document into ChromaDB
         # ==================================================
-
-        # TODO:
-        #
-        # pdf_reader.extract_text(document.filepath)
-        #
-        # rag.index_document(document.filepath)
-        #
-        # embeddings.generate(...)
-        #
-
+        
+        # Step 1: Load PDF
+        documents = document_loader.load_document(
+            document.filepath
+        )
+        
+        # Step 2: Split into chunks
+        chunks = document_splitter.split_documents(
+            documents
+        )
+        
+        # Step 3: Attach metadata
+        for index, chunk in enumerate(chunks):
+        
+            chunk.metadata["document_id"] = document.id
+            chunk.metadata["filename"] = document.filename
+            chunk.metadata["chunk_id"] = index
+        
+        # Step 4: Store in ChromaDB
+        vector_manager.create_vectorstore(
+            documents=chunks,
+            document_id=document.id
+        )
         # ==================================================
         # Success Response
         # ==================================================

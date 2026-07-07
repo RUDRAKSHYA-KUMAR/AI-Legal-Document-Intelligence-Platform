@@ -1,126 +1,168 @@
 """
 vectorstore.py
 
-Creates, saves, loads, and manages the FAISS vector database
-for legal document retrieval.
+Manages ChromaDB vector database for legal document retrieval.
 """
 
 from pathlib import Path
 from typing import List
 
 from langchain_core.documents import Document
-from langchain_community.vectorstores import FAISS
+from langchain_chroma import Chroma
 
-from app.core.embeddings import embedding_service 
+from app.core.embeddings import embedding_service
 
 
-# Default directory to save vector database
+# ======================================================
+# Configuration
+# ======================================================
+
 VECTOR_DB_PATH = Path("app/vectors")
 
+VECTOR_DB_PATH.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+
+# ======================================================
+# Vector Store Manager
+# ======================================================
 
 class VectorStoreManager:
     """
-    Handles FAISS vector database operations.
+    Handles ChromaDB operations.
     """
 
-    def __init__(self, vector_path: Path = VECTOR_DB_PATH):
-        self.vector_path = vector_path
-        self.vector_path.mkdir(parents=True, exist_ok=True)
+    def __init__(
+        self,
+        persist_directory: str = str(VECTOR_DB_PATH)
+    ):
 
-    def create_vectorstore(self, documents: List[Document]) -> FAISS:
-        """
-        Create a FAISS vector database from document chunks.
+        self.persist_directory = persist_directory
 
-        Args:
-            documents: List of LangChain Document objects
+    # --------------------------------------------------
+    # Collection Name
+    # --------------------------------------------------
 
-        Returns:
-            FAISS object
-        """
+    @staticmethod
+    def get_collection_name(
+        document_id: int
+    ) -> str:
+
+        return f"document_{document_id}"
+
+    # --------------------------------------------------
+    # Create Vector Store
+    # --------------------------------------------------
+
+    def create_vectorstore(
+        self,
+        documents: List[Document],
+        document_id: int
+    ) -> Chroma:
 
         if not documents:
-            raise ValueError("No documents provided.")
+            raise ValueError(
+                "No document chunks provided."
+            )
 
-        vectorstore = FAISS.from_documents(
-            documents,
-            embedding_service.embedding_model
+        collection_name = self.get_collection_name(
+            document_id
         )
 
-        return vectorstore
+        try:
 
-    def save_vectorstore(
-        self,
-        vectorstore: FAISS,
-        index_name: str = "legal_index"
-    ) -> None:
-        """
-        Save FAISS vector database to disk.
-        """
+            vectorstore = Chroma.from_documents(
+                documents=documents,
+                embedding=embedding_service.embedding_model,
+                collection_name=collection_name,
+                persist_directory=self.persist_directory
+            )
 
-        save_path = self.vector_path / index_name
+            return vectorstore
 
-        vectorstore.save_local(str(save_path))
+        except Exception as e:
+
+            raise RuntimeError(
+                f"Failed to create vector store: {e}"
+            )
+
+    # --------------------------------------------------
+    # Load Existing Collection
+    # --------------------------------------------------
 
     def load_vectorstore(
         self,
-        index_name: str = "legal_index"
-    ) -> FAISS:
-        """
-        Load saved FAISS vector database.
-        """
+        document_id: int
+    ) -> Chroma:
 
-        load_path = self.vector_path / index_name
+        collection_name = self.get_collection_name(
+            document_id
+        )
 
-        if not load_path.exists():
-            raise FileNotFoundError(
-                f"Vector database '{index_name}' not found."
+        try:
+
+            return Chroma(
+                collection_name=collection_name,
+                embedding_function=embedding_service.embedding_model,
+                persist_directory=self.persist_directory
             )
 
-        vectorstore = FAISS.load_local(
-            folder_path=str(load_path),
-            embeddings=embedding_service.embedding_model,
-            allow_dangerous_deserialization=True
-        )
+        except Exception as e:
 
-        return vectorstore
+            raise RuntimeError(
+                f"Unable to load vector store: {e}"
+            )
 
-    def create_and_save(
-        self,
-        documents: List[Document],
-        index_name: str = "legal_index"
-    ) -> FAISS:
-        """
-        Create and save vector database in one step.
-        """
-
-        vectorstore = self.create_vectorstore(documents)
-
-        self.save_vectorstore(
-            vectorstore,
-            index_name=index_name
-        )
-
-        return vectorstore
+    # --------------------------------------------------
+    # Get Retriever
+    # --------------------------------------------------
 
     def get_retriever(
         self,
-        index_name: str = "legal_index",
-        search_type: str = "similarity",
-        k: int = 4,
+        document_id: int,
+        k: int = 6,
+        search_type: str = "similarity"
     ):
-        """
-        Load vector database and return retriever.
-        """
 
-        vectorstore = self.load_vectorstore(index_name)
-
-        retriever = vectorstore.as_retriever(
-            search_type=search_type,
-            search_kwargs={"k": k},
+        vectorstore = self.load_vectorstore(
+            document_id
         )
 
-        return retriever
+        return vectorstore.as_retriever(
+            search_type=search_type,
+            search_kwargs={
+                "k": k
+            }
+        )
+
+    # --------------------------------------------------
+    # Delete Collection
+    # --------------------------------------------------
+
+    def delete_vectorstore(
+        self,
+        document_id: int
+    ):
+
+        vectorstore = self.load_vectorstore(
+            document_id
+        )
+
+        try:
+
+            vectorstore.delete_collection()
+
+        except Exception as e:
+
+            raise RuntimeError(
+                f"Unable to delete collection: {e}"
+            )
 
 
-# Singleton instance
+# ======================================================
+# Singleton
+# ======================================================
+
 vector_manager = VectorStoreManager()

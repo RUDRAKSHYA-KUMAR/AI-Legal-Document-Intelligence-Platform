@@ -1,7 +1,7 @@
 """
 retrieval.py
 
-Handles retrieval of relevant document chunks from the FAISS
+Handles retrieval of relevant document chunks from the ChromaDB
 vector database.
 """
 
@@ -9,22 +9,19 @@ from typing import List
 
 from langchain_core.documents import Document
 
-from rag.vectorstore import vector_manager
+from app.rag.vectorstore import vector_manager
 
 
 class DocumentRetriever:
-    """
-    Retrieves the most relevant document chunks
-    from the vector database.
-    """
 
     def __init__(
         self,
-        index_name: str = "legal_index",
-        k: int = 4,
+        document_id: int,
+        k: int = 6,
         search_type: str = "similarity",
     ):
-        self.index_name = index_name
+
+        self.document_id = document_id
         self.k = k
         self.search_type = search_type
         self._retriever = None
@@ -33,7 +30,7 @@ class DocumentRetriever:
     def retriever(self):
         if self._retriever is None:
             self._retriever = vector_manager.get_retriever(
-                index_name=self.index_name,
+                document_id=self.document_id,
                 k=self.k,
                 search_type=self.search_type,
             )
@@ -112,7 +109,3 @@ class DocumentRetriever:
 
         return results
 
-
-# Singleton Instance
-
-document_retriever = DocumentRetriever()
