@@ -1,4 +1,4 @@
-# LexAI — AI Legal Document Intelligence Platform
+# Legal-Lens — AI Legal Document Intelligence Platform
 
 LexAI is an AI-powered legal document analysis application designed to parse, analyze, and query contracts or other legal documents. It leverages FastAPI on the backend and Google Gemini API with RAG (Retrieval-Augmented Generation) to deliver intelligent document summaries, contract risk analysis, plain-language clause explanations, and interactive chat capabilities.
 
