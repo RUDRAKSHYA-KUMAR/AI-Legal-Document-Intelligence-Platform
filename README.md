@@ -1,1 +1,0 @@
-﻿# AI-Legal-Document-Intelligence-Platform
