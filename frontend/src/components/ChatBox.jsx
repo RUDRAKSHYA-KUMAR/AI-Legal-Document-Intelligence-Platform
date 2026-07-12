@@ -110,7 +110,7 @@ export default function ChatBox({ documentId, documentName }) {
                 : 'Select a document to start chatting'}
             </p>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: 280, textAlign: 'center' }}>
-              SATURDAY will answer using only the content of the selected document.
+              LEGAL-LENS will answer using only the content of the selected document.
             </p>
             {/* Starter prompts */}
             {documentId && (

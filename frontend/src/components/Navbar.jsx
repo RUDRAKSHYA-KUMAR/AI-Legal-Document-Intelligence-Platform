@@ -16,7 +16,7 @@ const PAGE_TITLES = {
 }
 export default function Navbar() {
   const { pathname } = useLocation()
-  const page = PAGE_TITLES[pathname] || { title: 'SATURDAY', emoji: '⚖️' }
+  const page = PAGE_TITLES[pathname] || { title: 'LEGAL-LENS', emoji: '⚖️' }
   return (
     <header className="navbar">
       <motion.div

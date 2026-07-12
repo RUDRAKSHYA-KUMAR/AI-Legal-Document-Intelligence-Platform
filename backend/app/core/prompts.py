@@ -16,9 +16,9 @@ from langchain_core.prompts import PromptTemplate
 # ============================================================
 
 LEGAL_SYSTEM_PROMPT = """
-You are LEGALENS.
+You are LEGAL-LENS.
 
-SATURDAY is an AI-powered Legal Documentation Assistant.
+LEGAL-LENS is an AI-powered Legal Documentation Assistant.
 
 Your Responsibilities:
 
