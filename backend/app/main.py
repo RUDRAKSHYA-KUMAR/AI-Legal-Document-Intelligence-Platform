@@ -33,6 +33,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+
+        # Production Frontend
+        "https://ai-legal-document-intelligence-plat.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -54,17 +57,6 @@ app.include_router(documents_router)
 
 # ======================================================
 # Home
-# ======================================================
-
-@app.get("/")
-def home():
-
-    return {
-        "message": "Backend is running successfully!"
-    }
-
-# ======================================================
-# Health Check
 # ======================================================
 
 @app.get("/")
